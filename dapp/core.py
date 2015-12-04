@@ -3,34 +3,22 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 import logging
-
-from .. import config, plugin
-from ..proto import Protocol
+from contractvmd import dapp, config
 
 logger = logging.getLogger(config.APP_NAME)
 
-
-# Virtual Machine
-class EthCore (plugin.Core):
+class BlockStoreCore (dapp.Core):
 	def __init__ (self, chain, database):
-		super (EthCore, self).__init__ (chain, database)
-		self.database.init ('Contracts', [])
+		super (BlockStoreCore, self).__init__ (chain, database)
 
+	def set (self, key, value):
+		if self.database.exists (key):
+			return
+		else:
+			self.database.set (key, value)
 
-	def getStorageData (self, contracthash, data_index):
-		return None
-
-
-	def createContract (self, contracthash, contractcode, player, time):
-		pass
-
-
-	def send (self, contracthash, sendhash, data, player, time):
-		pass
-
-
-	def getSendResult (self, contracthash, sendhash):
-		return None
-
-	def getChainState (self):
-		return {}
+	def get (self, key):
+		if not self.database.exists (key):
+			return None
+		else:
+			return self.database.get (key)

@@ -4,42 +4,18 @@
 
 import logging
 
-from .. import config, plugin
-from . import core, api, proto
+from contractvmd import dapp, config
+from . import api, core, proto, message
 
 logger = logging.getLogger(config.APP_NAME)
 
+class eth (dapp.Dapp):
+	def __init__ (self, chain, db, dht, apiMaster):
+		self.core = core.BlockStoreCore (chain, db)
+		apiprov = api.BlockStoreAPI (self.core, dht, apiMaster)
+		super (ethvm, self).__init__(proto.BlockStoreProto.DAPP_CODE, proto.BlockStoreProto.METHOD_LIST, chain, db, dht, apiprov)
 
-class EthPlugin (plugin.Plugin):
-	def __init__ (self, chain, db, dht):
-		self.core = core.EthCore (chain, db)
-		super (EthPlugin, self).__init__('ETH', proto.EthProto.PLUGIN_CODE, proto.EthProto.METHOD_LIST, chain, db, dht)
-		self.API = api.EthAPI (self.core, self.DHT)
-
-
-	def getAPI (self):
-		return self.API
-
- 
-	def handleMessage (self, m):		
-		logger.info ('Found new message: \'%s\' (proto: %d) (player: %s)', m.Method, 
-					m.Protocol, m.Player)
-
-		if m.Method == proto.EthProto.METHOD_CONTRACT:
-			logger.info ('Found new message %s: contract')
-
-			if not 'contract_code' in m.Data:
-				return False
-			else:
-				m.ContractCode = m.Data['contract_code']
-				#return self.VM.tell (m.Hash, m.Contract, m.Player, m.Expire, self.VM.getTime (m.Block))
-
-		elif m.Method == proto.EthProto.METHOD_SEND:
-			logger.info ('Found new message %s: send')
-
-			if not 'contract' in m.Data or not 'values' in m.Data:
-				return False
-			else:
-				m.Contract = m.Data['contract']
-				m.Values = m.Data['values']
-				#return self.VM.tell (m.Hash, m.Contract, m.Player, m.Expire, self.VM.getTime (m.Block))
+	def handleMessage (self, m):
+		if m.Method == proto.BlockStoreProto.METHOD_SET:
+			logger.pluginfo ('Found new message %s: set %s', m.Hash, m.Data['key'])
+			self.core.set (m.Data['key'], m.Data['value'])

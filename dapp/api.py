@@ -2,31 +2,42 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-import copy
+import logging
+from . import message
+from contractvmd import dapp, config, proto
 
-from .. import plugin
-from ..proto import Protocol
+logger = logging.getLogger(config.APP_NAME)
 
-class EthAPI (plugin.API):	
-	def __init__ (self, core, dht):
-		errors = {}
+class BlockStoreAPI (dapp.API):
+	def __init__ (self, core, dht, api):
+		self.api = api
 		rpcmethods = {}
 
-		rpcmethods["contract"] = {'call': self.method_contract, 'help': {"args": ["contract_code", "player_address"], 
-			"return": {"outscript": "", "datahash": "", "fee": ""}}}
-		rpcmethods["info"] = {'call': self.method_info, 'help': {}, "return": {}}
+		rpcmethods["get"] = {
+			"call": self.method_get,
+			"help": {"args": ["key"], "return": {}}
+		}
 
-		super (EthAPI, self).__init__(core, dht, rpcmethods, errors)
+		rpcmethods["set"] = {
+			"call": self.method_set,
+			"help": {"args": ["key", "value"], "return": {}}
+		}
 
-		#self.method_tell ('<contract><intaction id="test" /></contract>', 'mn1FwcHcUDodajXGUFRdzx23BpGU7GJ7DV', 100)
+		errors = { 'KEY_ALREADY_SET': {'code': -2, 'message': 'Key already set'}, 'KEY_IS_NOT_SET': {'code': -3, 'message': 'Key is not set'} }
+
+		super (BlockStoreAPI, self).__init__(core, dht, rpcmethods, errors)
 
 
-	def method_contract (self, contract_code, player):
-		pass
+	def method_get (self, key):
+		v = self.core.get (key)
+		if v == None:
+			return self.createErrorResponse ('KEY_IS_NOT_SET')
+		else:
+			return v
 
- 
-	# Return tstvm informations
-	def method_info (self):
-		return (self.core.getChainState ())
-		
+	def method_set (self, key, value):
+		if self.core.get (key) != None:
+			return self.createErrorResponse ('KEY_ALREADY_SET')
 
+		msg = message.BlockStoreMessage.set (key, value)
+		return self.createTransactionResponse (msg)
